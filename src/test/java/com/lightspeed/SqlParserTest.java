@@ -28,12 +28,13 @@ class SqlParserTest {
         // given
         String sql =
                 """
-                SELECT a.name
+                SELECT a.name, count(book.id), sum(book.cost)
                 FROM author a
                 LEFT JOIN book b ON (a.id = b.author_id)
                 WHERE a.name LIKE ('%A%')
-                  AND b.price > 1000
+                  AND b.cost > 1000
                    OR b.pages > 300
+                GROUP BY a.name
                 """;
 
         // when
@@ -41,16 +42,20 @@ class SqlParserTest {
 
         // then
         assertNotNull(actual.columns());
-        assertTrue(actual.columns().contains("a.name"));
-        assertNotNull(actual.tables());
+        List<String> expectedColumns = List.of(
+                "a.name",
+                "count(book.id)",
+                "sum(book.cost)");
+        assertEquals(expectedColumns, actual.columns());
         assertTrue(actual.tables().contains(new Source("author", "a")));
-        assertNotNull(actual.joins());
         Join expectedJoin = new Join("LEFT", "book", "b", "(a.id = b.author_id)");
         assertEquals(expectedJoin, actual.joins().getFirst());
         List<WhereClause> expectedWhereClauses = List.of(
-                new WhereClause("WHERE", "(a.name LIKE ('%A%')"),
-                new WhereClause("AND", "b.price > 1000)"),
+                new WhereClause("WHERE", "a.name LIKE ('%A%')"),
+                new WhereClause("AND", "b.cost > 1000"),
                 new WhereClause("OR", "b.pages > 300"));
         assertEquals(expectedWhereClauses, actual.whereClauses());
+        List<String> expectedGroupByColumns = List.of("a.name");
+        assertEquals(expectedGroupByColumns, actual.groupByColumns());
     }
 }
