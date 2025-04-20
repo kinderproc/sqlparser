@@ -1,8 +1,12 @@
 package com.lightspeed;
 
+import com.lightspeed.model.Join;
+import com.lightspeed.model.Query;
+import com.lightspeed.model.Source;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,12 +20,14 @@ class SqlParserTest {
     }
 
     @Test
-    void givenSelectFromSql_whenParseCalled_thenColumnAndTableParsed() {
+    // TODO: add parameterized test
+    void givenSelectFromJoinSql_whenParseCalled_thenColumnAndTableAndJoinParsed() {
         // given
         String sql =
                 """
-                SELECT author.name
-                FROM author
+                SELECT a.name
+                FROM author a
+                LEFT JOIN book b ON (a.id = b.author_id)
                 """;
 
         // when
@@ -29,8 +35,11 @@ class SqlParserTest {
 
         // then
         assertNotNull(actual.columns());
-        assertTrue(actual.columns().contains("author.name"));
+        assertTrue(actual.columns().contains("a.name"));
         assertNotNull(actual.tables());
-        assertTrue(actual.tables().contains(new Source("author", null)));
+        assertTrue(actual.tables().contains(new Source("author", "a")));
+        assertNotNull(actual.joins());
+        Join expected = new Join("LEFT", "book", "b", "(a.id = b.author_id)");
+        assertEquals(expected, actual.joins().getFirst());
     }
 }
