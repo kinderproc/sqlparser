@@ -3,6 +3,7 @@ package com.lightspeed;
 import com.lightspeed.model.Join;
 import com.lightspeed.model.Query;
 import com.lightspeed.model.Source;
+import com.lightspeed.model.WhereClause;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +18,7 @@ public class SqlParser {
         List<String> columns = new ArrayList<>();
         List<Source> sources = new ArrayList<>();
         List<Join> joins = new ArrayList<>();
+        List<WhereClause> whereClauses = new ArrayList<>();
 
         try {
             columns = parseSelect(sql);
@@ -36,11 +38,31 @@ public class SqlParser {
             parsingErrors.add(e.getMessage());
         }
 
-        return new Query(columns, sources, joins);
+        try {
+            whereClauses = parseWhere(sql);
+        } catch (IllegalArgumentException e) {
+            parsingErrors.add(e.getMessage());
+        }
+
+        return new Query(columns, sources, joins, whereClauses);
+    }
+
+    private List<WhereClause> parseWhere(String sql) {
+        Pattern pattern = Pattern.compile("(?i)(?:^|\\s)(WHERE|AND|OR)\\s+(.+?)(?=\\s+(?:AND|OR|$))");
+        Matcher matcher = pattern.matcher(sql);
+        List<WhereClause> result = new ArrayList<>();
+
+        while (matcher.find()) {
+            String type = matcher.group(1).trim();
+            String condition = matcher.group(2).trim();
+            result.add(new WhereClause(type, condition));
+        }
+
+        return result;
     }
 
     private List<Join> parseJoins(String sql) {
-        Pattern pattern = Pattern.compile("(INNER|LEFT|RIGHT|FULL)\\s+JOIN(.+?)\\s(.+?)ON(.+?)(:?JOIN\\b|WHERE\\b|$)");
+        Pattern pattern = Pattern.compile("(INNER|LEFT|RIGHT|FULL)\\s+JOIN(.+?)\\s(.+?)ON(.+?)(:?JOIN\\b|\\sWHERE\\b|$)");
         Matcher matcher = pattern.matcher(sql);
         List<Join> result = new ArrayList<>();
 
