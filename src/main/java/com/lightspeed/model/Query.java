@@ -7,6 +7,8 @@ public record Query(
         List<Source> tables,
         List<Join> joins,
         List<WhereClause> whereClauses,
-        List<String> groupByColumns) {
+        List<String> groupByColumns,
+        List<HavingClause> havingClauses,
+        List<Sort> orderByColumns) {
 
 }

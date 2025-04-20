@@ -1,7 +1,9 @@
 package com.lightspeed;
 
+import com.lightspeed.model.HavingClause;
 import com.lightspeed.model.Join;
 import com.lightspeed.model.Query;
+import com.lightspeed.model.Sort;
 import com.lightspeed.model.Source;
 import com.lightspeed.model.WhereClause;
 
@@ -20,6 +22,8 @@ public class SqlParser {
         List<Join> joins = new ArrayList<>();
         List<WhereClause> whereClauses = new ArrayList<>();
         List<String> groupByColumns = new ArrayList<>();
+        List<HavingClause> havingClauses = new ArrayList<>();
+        List<Sort> orderByColumns = new ArrayList<>();
 
         try {
             columns = parseSelect(sql);
@@ -51,11 +55,76 @@ public class SqlParser {
             parsingErrors.add(e.getMessage());
         }
 
-        return new Query(columns, sources, joins, whereClauses, groupByColumns);
+        try {
+            havingClauses = parseHaving(sql);
+        } catch (IllegalArgumentException e) {
+            parsingErrors.add(e.getMessage());
+        }
+
+        try {
+            orderByColumns = parseOrderBy(sql);
+        } catch (IllegalArgumentException e) {
+            parsingErrors.add(e.getMessage());
+        }
+
+        return new Query(columns, sources, joins, whereClauses, groupByColumns, havingClauses, orderByColumns);
+    }
+
+    private List<Sort> parseOrderBy(String sql) {
+        Pattern pattern = Pattern.compile(
+                "(?i)(?:^|\\s)ORDER BY\\s+(.+?)(?:LIMIT|OFFSET|$)",
+                Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(sql);
+
+        if (matcher.find()) {
+          String orderByPart = matcher.group(1);
+          return Arrays.stream(orderByPart.split(","))
+                  .map(str -> {
+                      String[] parts = str.split(" ");
+                      String column = parts[0];
+                      String direction = parts.length > 1 ? parts[1] : null;
+
+                      return new Sort(column, direction);
+                  })
+                  .toList();
+
+        }
+
+        return List.of();
+    }
+
+    private List<HavingClause> parseHaving(String sql) {
+        // TODO: add OR processing for HAVING clauses
+        Pattern pattern = Pattern.compile(
+                "(?i)HAVING\\s+(.+?)(?=\\s*(?:ORDER BY|LIMIT|OFFSET|$))",
+                Pattern.DOTALL
+        );
+        Matcher matcher = pattern.matcher(sql);
+
+        if (!matcher.find()) {
+            return List.of();
+        }
+
+        String havingBlock = matcher.group(1).trim();
+        List<HavingClause> result = new ArrayList<>();
+
+        String[] parts = havingBlock.split("((?i)\\s+(AND|OR)\\s+)");
+
+        if (parts.length > 0) {
+            result.add(new HavingClause("HAVING", parts[0].trim()));
+        }
+
+        for (int i = 1; i < parts.length; i ++) {
+            result.add(new HavingClause("AND", parts[i].trim()));
+        }
+
+        return result;
     }
 
     private List<String> parseGroupByColumns(String sql) {
-        Pattern pattern = Pattern.compile("GROUP BY+\\s(.+?)(?:ORDER|LIMIT|OFFSET|$)");
+        Pattern pattern = Pattern.compile(
+                "(?i)GROUP BY\\s(.+?)(?=\\s+(?:HAVING|ORDER|LIMIT|OFFSET|$))",
+                Pattern.DOTALL);
         Matcher matcher = pattern.matcher(sql);
 
         if (matcher.find()) {
@@ -68,7 +137,7 @@ public class SqlParser {
 
     private List<WhereClause> parseWhere(String sql) {
         Pattern pattern = Pattern.compile(
-                "(?i)(?:^|\\s)(WHERE|AND|OR)\\s+(.+?)(?=\\s+(?:AND|OR|GROUP BY|$))",
+                "(?i)(?:^|\\s)(WHERE|AND|OR)\\s+(.+?)(?=\\s+(?:AND|OR|GROUP BY|HAVING|ORDER|LIMIT|OFFSET|$))",
                 Pattern.DOTALL);
         Matcher matcher = pattern.matcher(sql);
         List<WhereClause> result = new ArrayList<>();

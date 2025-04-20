@@ -1,7 +1,9 @@
 package com.lightspeed;
 
+import com.lightspeed.model.HavingClause;
 import com.lightspeed.model.Join;
 import com.lightspeed.model.Query;
+import com.lightspeed.model.Sort;
 import com.lightspeed.model.Source;
 import com.lightspeed.model.WhereClause;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,9 @@ class SqlParserTest {
                   AND b.cost > 1000
                    OR b.pages > 300
                 GROUP BY a.name
+                HAVING COUNT(*) > 1
+                   AND SUM(book.cost) > 500
+                ORDER BY a.name ASC
                 """;
 
         // when
@@ -53,9 +58,16 @@ class SqlParserTest {
         List<WhereClause> expectedWhereClauses = List.of(
                 new WhereClause("WHERE", "a.name LIKE ('%A%')"),
                 new WhereClause("AND", "b.cost > 1000"),
-                new WhereClause("OR", "b.pages > 300"));
+                new WhereClause("OR", "b.pages > 300"),
+                new WhereClause("AND", "SUM(book.cost) > 500"));
         assertEquals(expectedWhereClauses, actual.whereClauses());
         List<String> expectedGroupByColumns = List.of("a.name");
         assertEquals(expectedGroupByColumns, actual.groupByColumns());
+        List<HavingClause> expectedHavingClause = List.of(
+                new HavingClause("HAVING", "COUNT(*) > 1"),
+                new HavingClause("AND", "SUM(book.cost) > 500"));
+        assertEquals(expectedHavingClause, actual.havingClauses());
+        List<Sort> expectedOrderByColumns = List.of(new Sort("a.name", "ASC"));
+        assertEquals(expectedOrderByColumns, actual.orderByColumns());
     }
 }
