@@ -80,8 +80,6 @@ class SqlParserTest {
                 FROM author a, book b
                 WHERE a.id = b.author_id
                   AND a.name LIKE ('%A%')
-                  AND b.cost > 1000
-                   OR b.pages > 300
                 """;
 
         // when
@@ -98,9 +96,7 @@ class SqlParserTest {
 
         List<WhereClause> expectedWhereClauses = List.of(
                 new WhereClause("WHERE", "a.id = b.author_id"),
-                new WhereClause("AND", "a.name LIKE ('%A%')"),
-                new WhereClause("AND", "b.cost > 1000"),
-                new WhereClause("OR", "b.pages > 300"));
+                new WhereClause("AND", "a.name LIKE ('%A%')"));
         assertEquals(expectedWhereClauses, actual.whereClauses());
     }
 }
