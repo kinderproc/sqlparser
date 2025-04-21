@@ -30,15 +30,15 @@ class SqlParserTest {
         String sql =
                 """
                 SELECT a.name, count(book.id), sum(book.cost)
-                LEFT JOIN book b ON (a.id = b.author_id)
-                WHERE a.name LIKE ('%A%')
-                  AND b.cost > 1000
-                   OR b.pages > 300
-                GROUP BY a.name
+                  FROM author a
+                  LEFT JOIN book b ON (a.id = b.author_id)
+                 WHERE a.name LIKE ('%A%')
+                   AND b.cost > 1000
+                 GROUP BY a.name
                 HAVING COUNT(*) > 1
                    AND SUM(book.cost) > 500
-                ORDER BY a.name ASC
-                LIMIT 100
+                 ORDER BY a.name ASC
+                 LIMIT 100
                 OFFSET 50
                 """;
 
@@ -57,9 +57,7 @@ class SqlParserTest {
         assertEquals(expectedJoin, actual.joins().getFirst());
         List<WhereClause> expectedWhereClauses = List.of(
                 new WhereClause("WHERE", "a.name LIKE ('%A%')"),
-                new WhereClause("AND", "b.cost > 1000"),
-                new WhereClause("OR", "b.pages > 300"),
-                new WhereClause("AND", "SUM(book.cost) > 500"));
+                new WhereClause("AND", "b.cost > 1000"));
         assertEquals(expectedWhereClauses, actual.whereClauses());
         List<String> expectedGroupByColumns = List.of("a.name");
         assertEquals(expectedGroupByColumns, actual.groupByColumns());

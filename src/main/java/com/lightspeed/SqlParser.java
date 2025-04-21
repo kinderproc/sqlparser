@@ -9,6 +9,7 @@ import com.lightspeed.model.WhereClause;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -185,16 +186,34 @@ public class SqlParser {
     }
 
     private List<WhereClause> parseWhere(String sql) {
-        // TODO: implement parentheses processing in WHERE clauses
-        Pattern pattern = Pattern.compile(
-                "(?i)(?:^|\\s)(WHERE|AND|OR)\\s+(.+?)(?=\\s+(?:AND|OR|GROUP BY|HAVING|ORDER|LIMIT|OFFSET|$))",
-                Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(sql);
+        // TODO: implement parentheses and 'OR' processing in WHERE clauses
+        Pattern whereBlockPattern = Pattern.compile(
+                "(?i)WHERE\\s+(.+?)(?=\\s*(?:GROUP\\s+BY|HAVING|ORDER\\s+BY|LIMIT|OFFSET|$))",
+                Pattern.DOTALL
+        );
+        Matcher blockMatcher = whereBlockPattern.matcher(sql);
+
+        if (!blockMatcher.find()) {
+            return Collections.emptyList();
+        }
+
+        String whereBlock = blockMatcher.group(1).trim();
         List<WhereClause> result = new ArrayList<>();
 
-        while (matcher.find()) {
-            String type = matcher.group(1).trim();
-            String condition = matcher.group(2).trim();
+        Pattern conditionPattern = Pattern.compile(
+                "(?i)(?:^|\\s)(AND|OR)\\s+(\\S+(?:\\s+\\S+)*)(?=\\s*(?:AND|OR|$))",
+                Pattern.DOTALL
+        );
+
+        String[] initialSplit = whereBlock.split("(?i)\\s+(AND|OR)\\s+", 2);
+        if (initialSplit.length > 0) {
+            result.add(new WhereClause("WHERE", initialSplit[0].trim()));
+        }
+
+        Matcher condMatcher = conditionPattern.matcher(whereBlock);
+        while (condMatcher.find()) {
+            String type = condMatcher.group(1).toUpperCase();
+            String condition = condMatcher.group(2).trim();
             result.add(new WhereClause(type, condition));
         }
 
