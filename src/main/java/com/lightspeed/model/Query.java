@@ -9,6 +9,8 @@ public record Query(
         List<WhereClause> whereClauses,
         List<String> groupByColumns,
         List<HavingClause> havingClauses,
-        List<Sort> orderByColumns) {
+        List<Sort> orderByColumns,
+        Integer limit,
+        Integer offset) {
 
 }

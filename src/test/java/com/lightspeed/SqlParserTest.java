@@ -26,7 +26,6 @@ class SqlParserTest {
 
     @Test
     void givenSelectFromJoinSql_whenParseCalled_thenColumnAndTableAndJoinParsed() {
-        // TODO: implement parentheses processing in WHERE clauses
         // given
         String sql =
                 """
@@ -40,6 +39,8 @@ class SqlParserTest {
                 HAVING COUNT(*) > 1
                    AND SUM(book.cost) > 500
                 ORDER BY a.name ASC
+                LIMIT 100
+                OFFSET 50
                 """;
 
         // when
@@ -69,5 +70,7 @@ class SqlParserTest {
         assertEquals(expectedHavingClause, actual.havingClauses());
         List<Sort> expectedOrderByColumns = List.of(new Sort("a.name", "ASC"));
         assertEquals(expectedOrderByColumns, actual.orderByColumns());
+        assertEquals(100, actual.limit());
+        assertEquals(50, actual.offset());
     }
 }

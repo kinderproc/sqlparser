@@ -24,6 +24,8 @@ public class SqlParser {
         List<String> groupByColumns = new ArrayList<>();
         List<HavingClause> havingClauses = new ArrayList<>();
         List<Sort> orderByColumns = new ArrayList<>();
+        Integer limit = 0;
+        Integer offset = 0;
 
         try {
             columns = parseSelect(sql);
@@ -67,12 +69,59 @@ public class SqlParser {
             parsingErrors.add(e.getMessage());
         }
 
-        return new Query(columns, sources, joins, whereClauses, groupByColumns, havingClauses, orderByColumns);
+        try {
+            limit = parseLimit(sql);
+        } catch (IllegalArgumentException e) {
+            parsingErrors.add(e.getMessage());
+        }
+
+        try {
+            offset = parseOffset(sql);
+        } catch (IllegalArgumentException e) {
+            parsingErrors.add(e.getMessage());
+        }
+
+        return new Query(columns, sources, joins, whereClauses, groupByColumns, havingClauses, orderByColumns, limit, offset);
+    }
+
+    private Integer parseLimit(String sql) {
+        Pattern pattern = Pattern.compile(
+                "(?i)LIMIT\\s+(\\d+)",
+                Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(sql);
+
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+
+        return 0;
+    }
+
+    private Integer parseOffset(String sql) {
+        Pattern pattern = Pattern.compile(
+                "(?i)OFFSET\\s+(\\d+)",
+                Pattern.DOTALL
+        );
+        Matcher matcher = pattern.matcher(sql);
+
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+
+        return 0;
     }
 
     private List<Sort> parseOrderBy(String sql) {
         Pattern pattern = Pattern.compile(
-                "(?i)(?:^|\\s)ORDER BY\\s+(.+?)(?:LIMIT|OFFSET|$)",
+                "(?i)(?:^|\\s)ORDER BY\\s+(.+?)(:?LIMIT|OFFSET|$|\n)",
                 Pattern.DOTALL);
         Matcher matcher = pattern.matcher(sql);
 
@@ -136,6 +185,7 @@ public class SqlParser {
     }
 
     private List<WhereClause> parseWhere(String sql) {
+        // TODO: implement parentheses processing in WHERE clauses
         Pattern pattern = Pattern.compile(
                 "(?i)(?:^|\\s)(WHERE|AND|OR)\\s+(.+?)(?=\\s+(?:AND|OR|GROUP BY|HAVING|ORDER|LIMIT|OFFSET|$))",
                 Pattern.DOTALL);
