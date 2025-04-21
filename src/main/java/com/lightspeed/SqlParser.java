@@ -227,14 +227,27 @@ public class SqlParser {
 
         if (matcher.find()) {
             String fromPart = matcher.group(1).trim();
-            return Arrays.stream(fromPart.split(","))
-                    .map(str -> {
-                        String[] parts = str.split("\\s");
-                        String tableName = parts[0];
-                        String alias = parts.length > 1 ? parts[1] : null;
+            if (fromPart.contains("JOIN")) {
+                return Arrays.stream(fromPart.split(","))
+                        .map(str -> {
+                            String[] parts = str.split("\\s");
+                            String tableName = parts[0];
+                            String alias = parts.length > 1 ? parts[1] : null;
 
-                        return new Source(tableName, alias);
-                    }).toList();
+                            return new Source(tableName, alias);
+                        }).toList();
+            } else {
+                return Arrays.stream(fromPart.split(","))
+                        .map(str -> {
+                            str = str.trim();
+                            if (str.contains(" ")) {
+                                String[] parts = str.split(" ");
+                                return new Source(parts[0], parts[1]);
+                            } else {
+                                return new Source(str, null);
+                            }
+                        }).toList();
+            }
         }
 
         return List.of();
@@ -246,9 +259,13 @@ public class SqlParser {
 
         if (matcher.find()) {
             String selectPart = matcher.group(1).trim();
-            return Arrays.stream(selectPart.split(","))
-                    .map(String::trim)
-                    .toList();
+            if (selectPart.equals("*")) {
+                return List.of("*");
+            } else {
+                return Arrays.stream(selectPart.split(","))
+                        .map(String::trim)
+                        .toList();
+            }
         }
 
         throw new IllegalArgumentException("Can't parse columns from SELECT.");

@@ -30,7 +30,6 @@ class SqlParserTest {
         String sql =
                 """
                 SELECT a.name, count(book.id), sum(book.cost)
-                FROM author a
                 LEFT JOIN book b ON (a.id = b.author_id)
                 WHERE a.name LIKE ('%A%')
                   AND b.cost > 1000
@@ -72,5 +71,38 @@ class SqlParserTest {
         assertEquals(expectedOrderByColumns, actual.orderByColumns());
         assertEquals(100, actual.limit());
         assertEquals(50, actual.offset());
+    }
+
+    @Test
+    void givenSelectWithAsteriskAndImplicitJoin_whenParseCalled_thenColumnsAndTablesAndWhereParsed() {
+        // given
+        String sql =
+                """
+                SELECT *
+                FROM author a, book b
+                WHERE a.id = b.author_id
+                  AND a.name LIKE ('%A%')
+                  AND b.cost > 1000
+                   OR b.pages > 300
+                """;
+
+        // when
+        Query actual = parser.parse(sql);
+
+        // then
+        assertNotNull(actual.columns());
+        List<String> expectedColumns = List.of("*");
+        assertEquals(expectedColumns, actual.columns());
+        List<Source> expectedTables = List.of(
+                new Source("author", "a"),
+                new Source("book", "b"));
+        assertEquals(expectedTables, actual.tables());
+
+        List<WhereClause> expectedWhereClauses = List.of(
+                new WhereClause("WHERE", "a.id = b.author_id"),
+                new WhereClause("AND", "a.name LIKE ('%A%')"),
+                new WhereClause("AND", "b.cost > 1000"),
+                new WhereClause("OR", "b.pages > 300"));
+        assertEquals(expectedWhereClauses, actual.whereClauses());
     }
 }
